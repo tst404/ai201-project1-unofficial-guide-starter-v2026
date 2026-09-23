@@ -154,9 +154,9 @@ Sources retrieved: thread_first_gen.txt, thread_laptop_specs.txt, thread_pass_fa
      Milestone 5. -->
 
 **1.**
-
+i asked claude to write the chunking function since I had borderline no experience in python and I had no idea how to write a chunking function. I also asked it to write an explaination of the function so I could understand and learn what it does and how it works.
 **2.**
-
+Since i was working by myself, I asked it to help go over the questions with me and asked it what it would suggest as cutoffs, though I ended up not going with their suggestion.
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
