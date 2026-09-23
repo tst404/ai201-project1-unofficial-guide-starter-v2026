@@ -56,7 +56,7 @@ in at least 4 of 5 tries.
 ---
 
 ## 4. Something about your chunks
-
+the chunks end in periods so that nothing is lost or cut off
 <!-- YOU WRITE THIS ONE.
 
      How would you know if your chunks were the right size? Name something
@@ -72,13 +72,14 @@ in at least 4 of 5 tries.
 
 
 **Why this target:**
-
+it is something i can check easily and this working means that my chunker work well
 
 
 ---
 
 ## 5. Your choice
 
+should not take more than 10 seconds to get an answer
 <!-- YOU WRITE THIS ONE TOO.
 
      Pick something you actually care about getting right. It could be about
@@ -90,7 +91,7 @@ in at least 4 of 5 tries.
 
 
 **Why this target:**
-
+if it takes too long then it may just be better to search this info up elsewhere
 
 
 ---

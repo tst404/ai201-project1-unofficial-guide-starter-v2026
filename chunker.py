@@ -25,6 +25,7 @@ your pipeline, not giving up.
 from dataclasses import dataclass
 
 import config
+import re
 from ingest import Document
 
 
@@ -81,22 +82,93 @@ def fallback_split(
 
 
 def split_documents(documents: list[Document]) -> list[Chunk]:
+    import re
+
+# Matches a line like: --- reply 3 (22 votes) ---
+REPLY_HEADER_RE = re.compile(
+    r"^-{2,}\s*reply\s*\d+\s*\(\s*(\d+)\s*votes?\s*\)\s*-{2,}$",
+    re.IGNORECASE,
+)
+# Matches a line like: THREAD: Is a bike worth it for a 20 minute walk commute?
+THREAD_TITLE_RE = re.compile(r"^THREAD:\s*(.+)$", re.IGNORECASE)
+
+
+def _split_thread(doc: Document) -> list[Chunk] | None:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
-
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
-
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
-
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    Split one THREAD-style document into (question, reply) chunks.
+    Returns None if the document doesn't look like a thread, so the
+    caller can fall back to fallback_split for that one file.
     """
+    lines = doc.text.splitlines()
+
+    title = None
+    body_start = 0
+    for i, line in enumerate(lines):
+        m = THREAD_TITLE_RE.match(line.strip())
+        if m:
+            title = m.group(1).strip()
+            body_start = i + 1
+            break
+    if title is None:
+        return None
+
+    replies: list[tuple[str, list[str]]] = []  # (votes, body_lines)
+    current_votes = None
+    current_body: list[str] = []
+    for line in lines[body_start:]:
+        m = REPLY_HEADER_RE.match(line.strip())
+        if m:
+            if current_votes is not None:
+                replies.append((current_votes, current_body))
+            current_votes = m.group(1)
+            current_body = []
+        elif line.strip():
+            current_body.append(line.strip())
+    if current_votes is not None:
+        replies.append((current_votes, current_body))
+
+    if not replies:
+        return None
+
+    chunks: list[Chunk] = []
+    for idx, (votes, body_lines) in enumerate(replies):
+        reply_text = " ".join(body_lines).strip()
+        if not reply_text:
+            continue
+        chunk_text = f"Q: {title}\n({votes} votes) A: {reply_text}"
+        chunks.append(
+            Chunk(
+                text=chunk_text,
+                source=doc.source,
+                index=idx,
+                produced_by="chunker.py::split_documents",
+            )
+        )
+    return chunks
+
+
+def split_documents(documents: list[Document]) -> list[Chunk]:
+    """
+    Each document is a THREAD with several short replies. Rather than
+    slicing by character count, split on the reply boundaries and pair
+    every reply with its thread's question — a reply alone doesn't carry
+    enough meaning to be a useful retrieval unit on its own.
+
+    Falls back to fallback_split for any document that doesn't match the
+    THREAD / "--- reply N (X votes) ---" shape, so a malformed or
+    differently-structured file doesn't just vanish.
+    """
+    chunks: list[Chunk] = []
+    for doc in documents:
+        thread_chunks = _split_thread(doc)
+        if thread_chunks is None:
+            fallback_chunks = fallback_split([doc])
+            for c in fallback_chunks:
+                c.produced_by = "chunker.py::split_documents (fallback_split, non-thread doc)"
+            chunks.extend(fallback_chunks)
+        else:
+            chunks.extend(thread_chunks)
+    return chunks
     return fallback_split(documents)
 
 
